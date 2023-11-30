@@ -1,0 +1,9 @@
+name: "S3 Deploy"
+description: "Deploy a directory to an S3 bucket using the AWS CLI."
+author: andrewdex
+runs:
+  using: docker
+  image: Dockerfile
+branding:
+  icon: upload-cloud
+  color: blue
