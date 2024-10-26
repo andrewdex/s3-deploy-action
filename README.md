@@ -51,7 +51,7 @@ jobs:
         run: npm run build
         env:
           CI: false
-      - uses: andrewdex/s3-deploy-action@main
+      - uses: andrewdex/s3-deploy-action@v1
         with:
           args: --acl public-read --follow-symlinks --delete --exclude '.git*/*'
         env:
