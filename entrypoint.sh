@@ -13,7 +13,6 @@ check_env_variable() {
 check_env_variable "$AWS_S3_BUCKET" "AWS_S3_BUCKET"
 check_env_variable "$AWS_ACCESS_KEY_ID" "AWS_ACCESS_KEY_ID"
 check_env_variable "$AWS_SECRET_ACCESS_KEY" "AWS_SECRET_ACCESS_KEY"
-check_env_variable "$CLOUDFRONT_DISTRIBUTION_ID" "CLOUDFRONT_DISTRIBUTION_ID"
 
 # Set default AWS region if not set
 AWS_REGION="${AWS_REGION:-us-east-1}"
@@ -38,11 +37,13 @@ sh -c "aws s3 sync ${SOURCE_DIR:-.} s3://${AWS_S3_BUCKET}/${DEST_DIR} \
               --no-progress \
               ${ENDPOINT_APPEND} $*"
 
-# clear out cloudfront cache
+# clear out cloudfront cache if distribution id is not empty
+
 if [ -n "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
   echo "Invalidating CloudFront cache..."
-  sh -c "aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths '/*' --profile s3-deploy-action"
+  aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths "/*" --profile s3-deploy-action
 fi
+
 
 # Clear out credentials after sync
 aws configure --profile s3-deploy-action <<-EOF > /dev/null 2>&1
