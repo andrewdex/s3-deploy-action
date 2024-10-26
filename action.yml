@@ -1,9 +1,33 @@
 name: "S3 Deploy Github Action"
 description: "Deploy a directory to an S3 bucket using the AWS CLI."
 author: andrewdex
+
+inputs:
+  AWS_S3_BUCKET:
+    description: "S3 bucket name"
+    required: true
+  SOURCE_DIR:
+    description: "Source directory to upload"
+    required: false
+    default: "."
+  AWS_REGION:
+    description: "AWS region"
+    required: false
+    default: "us-east-1"
+
+  AWS_ACCESS_KEY_ID:
+    description: "AWS access key ID"
+    required: true
+  AWS_SECRET_ACCESS_KEY:
+    description: "AWS secret access key"
+    required: true
+
+  CLOUDFRONT_DISTRIBUTION_ID:
+    description: "CloudFront distribution ID for cache invalidation"
+    required: false
 runs:
-  using: docker
-  image: Dockerfile
+  using: "node20"
+  main: "dist/index.js"
 branding:
-  icon: upload-cloud
-  color: blue
+  icon: "upload-cloud"
+  color: "blue"
