@@ -13,6 +13,7 @@ check_env_variable() {
 check_env_variable "$AWS_S3_BUCKET" "AWS_S3_BUCKET"
 check_env_variable "$AWS_ACCESS_KEY_ID" "AWS_ACCESS_KEY_ID"
 check_env_variable "$AWS_SECRET_ACCESS_KEY" "AWS_SECRET_ACCESS_KEY"
+check_env_variable "$CLOUDFRONT_DISTRIBUTION_ID" "CLOUDFRONT_DISTRIBUTION_ID"
 
 # Set default AWS region if not set
 AWS_REGION="${AWS_REGION:-us-east-1}"
