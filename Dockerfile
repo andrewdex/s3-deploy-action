@@ -11,7 +11,7 @@ LABEL homepage="https://dilushagonagala.com/"
 LABEL maintainer="Dilusha Gonagala <hello@dilushagonagala.com>"
 LABEL "com.github.actions.license"="MIT"
 
-ENV AWSCLI_VERSION='1.31.3'
+ENV AWSCLI_VERSION='2.18.15'
 
 RUN apk add --no-cache curl \
     && pip install --quiet --no-cache-dir awscli==${AWSCLI_VERSION} \
