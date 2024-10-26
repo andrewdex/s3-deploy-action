@@ -37,6 +37,12 @@ sh -c "aws s3 sync ${SOURCE_DIR:-.} s3://${AWS_S3_BUCKET}/${DEST_DIR} \
               --no-progress \
               ${ENDPOINT_APPEND} $*"
 
+# clear out cloudfront cache
+if [ -n "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
+  echo "Invalidating CloudFront cache..."
+  sh -c "aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths '/*' --profile s3-deploy-action"
+fi
+
 # Clear out credentials after sync
 aws configure --profile s3-deploy-action <<-EOF > /dev/null 2>&1
 null
