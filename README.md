@@ -15,6 +15,23 @@ Optionally, you can also set the following environment variables:
 - `AWS_REGION`: The AWS region where your S3 bucket is located. If not set, it defaults to `us-east-1`.
 - `AWS_S3_ENDPOINT`: The endpoint URL for your S3 bucket. This is useful if you are using a custom S3-compatible storage service.
 
+## Clearing CloudFront Cache
+
+If you are using Amazon CloudFront to distribute your content, you may want to invalidate the cache after deploying new files to ensure that the latest version is served. This action can be configured to clear the CloudFront cache if a distribution ID is provided.
+
+To clear the CloudFront cache, set the `CLOUDFRONT_DISTRIBUTION_ID` environment variable with your CloudFront distribution ID. The following script will invalidate the CloudFront cache:
+
+```sh
+if [ -n "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
+  echo "Invalidating CloudFront cache..."
+  aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths "/*" --profile s3-deploy-action
+fi
+```
+
+Make sure to provide the `CLOUDFRONT_DISTRIBUTION_ID` as a secret in your GitHub repository settings.
+
+Make sure that your AWS credentials have the necessary permissions to create invalidations for the CloudFront distribution.
+
 ## Example
 
 ```yaml
@@ -41,6 +58,7 @@ jobs:
           AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} // Optional
           AWS_REGION: "us-east-2" # defaults to us-east-1
           SOURCE_DIR: "dist/website/browser" # defaults to entire repository otherwise
 ```
