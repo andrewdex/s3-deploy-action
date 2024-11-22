@@ -28,6 +28,8 @@ describe("S3 Deploy GitHub Action", () => {
           return "us-east-1";
         case "CLOUDFRONT_DISTRIBUTION_ID":
           return "test-distribution-id";
+        case "AWS_S3_PREFIX":
+          return "test-prefix";
         default:
           return "";
       }
@@ -55,7 +57,37 @@ describe("S3 Deploy GitHub Action", () => {
     expect(process.env.AWS_DEFAULT_REGION).toBe("us-east-1");
   });
 
-  it("syncs files to S3 bucket", async () => {
+  it("syncs files to S3 bucket with prefix", async () => {
+    await run();
+
+    expect(execSync).toHaveBeenCalledWith(
+      `aws s3 sync test-source-dir s3://test-bucket/test-prefix --acl public-read --no-progress`,
+      { stdio: "inherit" }
+    );
+  });
+
+  it("syncs files to S3 bucket without prefix", async () => {
+    getInputMock.mockImplementation((name: string) => {
+      switch (name) {
+        case "AWS_ACCESS_KEY_ID":
+          return "test-access-key";
+        case "AWS_SECRET_ACCESS_KEY":
+          return "test-secret-key";
+        case "AWS_S3_BUCKET":
+          return "test-bucket";
+        case "SOURCE_DIR":
+          return "test-source-dir";
+        case "AWS_REGION":
+          return "us-east-1";
+        case "CLOUDFRONT_DISTRIBUTION_ID":
+          return "test-distribution-id";
+        case "AWS_S3_PREFIX":
+          return "";
+        default:
+          return "";
+      }
+    });
+
     await run();
 
     expect(execSync).toHaveBeenCalledWith(
