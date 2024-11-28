@@ -15,12 +15,10 @@ function syncFilesToS3(bucketName: string, sourceDir: string, prefix: string, en
   try {
     const destination = prefix ? `s3://${bucketName}/${prefix}` : `s3://${bucketName}`;
     console.log(`Syncing files from ${sourceDir} to S3 bucket: ${destination}`);
+    console.log(`Using endpoint: ${endpoint}`);
     const endpointParam = endpoint ? `--endpoint-url ${endpoint}` : "";
-    if (endpoint) {
-      console.log(`Using endpoint: ${endpoint}`);
-    }
     execSync(
-      `aws s3 sync ${sourceDir} ${destination} --acl public-read --no-progress ${endpointParam}`,
+      `aws s3 sync ${sourceDir} ${destination} --no-progress --acl public-read ${endpointParam}`,
       { stdio: "inherit" }
     );
   } catch (error) {
