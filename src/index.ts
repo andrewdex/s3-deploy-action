@@ -5,14 +5,10 @@ function setAwsEnvVariables(
   accessKeyId: string,
   secretAccessKey: string,
   region: string,
-  endpoint?: string
 ) {
   process.env.AWS_ACCESS_KEY_ID = accessKeyId;
   process.env.AWS_SECRET_ACCESS_KEY = secretAccessKey;
   process.env.AWS_DEFAULT_REGION = region;
-  if (endpoint) {
-    process.env.AWS_S3_ENDPOINT = endpoint;
-  }
 }
 
 function syncFilesToS3(bucketName: string, sourceDir: string, prefix: string, endpoint?: string) {
@@ -20,6 +16,9 @@ function syncFilesToS3(bucketName: string, sourceDir: string, prefix: string, en
     const destination = prefix ? `s3://${bucketName}/${prefix}` : `s3://${bucketName}`;
     console.log(`Syncing files from ${sourceDir} to S3 bucket: ${destination}`);
     const endpointParam = endpoint ? `--endpoint-url ${endpoint}` : "";
+    if (endpoint) {
+      console.log(`Using endpoint: ${endpoint}`);
+    }
     execSync(
       `aws s3 sync ${sourceDir} ${destination} --acl public-read --no-progress ${endpointParam}`,
       { stdio: "inherit" }
@@ -58,8 +57,9 @@ async function run() {
     );
     const prefix = core.getInput("AWS_S3_PREFIX") || "";
     const endpoint = core.getInput("AWS_S3_ENDPOINT") || "";
+    console.log('endpoint', endpoint)
 
-    setAwsEnvVariables(accessKeyId, secretAccessKey, region, endpoint);
+    setAwsEnvVariables(accessKeyId, secretAccessKey, region);
 
     syncFilesToS3(bucketName, sourceDir, prefix, endpoint);
 
