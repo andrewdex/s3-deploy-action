@@ -11,11 +11,12 @@ function setAwsEnvVariables(
   process.env.AWS_DEFAULT_REGION = region;
 }
 
-function syncFilesToS3(bucketName: string, sourceDir: string) {
+function syncFilesToS3(bucketName: string, sourceDir: string, prefix: string) {
   try {
-    console.log(`Syncing files from ${sourceDir} to S3 bucket: ${bucketName}`);
+    const destination = prefix ? `s3://${bucketName}/${prefix}` : `s3://${bucketName}`;
+    console.log(`Syncing files from ${sourceDir} to S3 bucket: ${destination}`);
     execSync(
-      `aws s3 sync ${sourceDir} s3://${bucketName} --acl public-read --no-progress`,
+      `aws s3 sync ${sourceDir} ${destination} --acl public-read --no-progress`,
       { stdio: "inherit" }
     );
   } catch (error) {
@@ -50,10 +51,11 @@ async function run() {
     const cloudfrontDistributionId = core.getInput(
       "CLOUDFRONT_DISTRIBUTION_ID"
     );
+    const prefix = core.getInput("AWS_S3_PREFIX") || "";
 
     setAwsEnvVariables(accessKeyId, secretAccessKey, region);
 
-    syncFilesToS3(bucketName, sourceDir);
+    syncFilesToS3(bucketName, sourceDir, prefix);
 
     if (cloudfrontDistributionId) {
       invalidateCloudFrontCache(cloudfrontDistributionId);
