@@ -10,6 +10,7 @@ inputs:
     description: "Source directory to upload"
     required: false
     default: "."
+
   AWS_REGION:
     description: "AWS region"
     required: false
@@ -26,8 +27,8 @@ inputs:
     description: "CloudFront distribution ID for cache invalidation"
     required: false
 
-  AWS_S3_PREFIX:
-    description: "Optional prefix for the S3 bucket"
+  AWS_S3_ENDPOINT:
+    description: "Optional endpoint URL for the S3 bucket"
     required: false
 
 runs:
