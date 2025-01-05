@@ -59,8 +59,9 @@ jobs:
           AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} // Optional
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} # Optional
           AWS_REGION: "us-east-2" # defaults to us-east-1
           SOURCE_DIR: "dist/website/browser" # defaults to entire repository otherwise
           AWS_S3_PREFIX: "your-prefix" # Optional
+          AWS_S3_ENDPOINT: "your-endpoint" # Optional
 ```
