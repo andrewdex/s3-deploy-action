@@ -1,5 +1,7 @@
 # GitHub Action: S3 Deploy
 
+[![CI](https://github.com/andrewdex/s3-deploy-action/actions/workflows/ci.yml/badge.svg)](https://github.com/andrewdex/s3-deploy-action/actions/workflows/ci.yml)
+
 This GitHub Action allows you to upload files to an S3 bucket.
 
 ## Usage
