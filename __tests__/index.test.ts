@@ -30,6 +30,8 @@ describe("S3 Deploy GitHub Action", () => {
           return "test-distribution-id";
         case "AWS_S3_PREFIX":
           return "test-prefix";
+        case "AWS_S3_ENDPOINT":
+          return "test-endpoint";
         default:
           return "";
       }
@@ -55,13 +57,14 @@ describe("S3 Deploy GitHub Action", () => {
     expect(process.env.AWS_ACCESS_KEY_ID).toBe("test-access-key");
     expect(process.env.AWS_SECRET_ACCESS_KEY).toBe("test-secret-key");
     expect(process.env.AWS_DEFAULT_REGION).toBe("us-east-1");
+    expect(process.env.AWS_S3_ENDPOINT).toBe("test-endpoint");
   });
 
   it("syncs files to S3 bucket with prefix", async () => {
     await run();
 
     expect(execSync).toHaveBeenCalledWith(
-      `aws s3 sync test-source-dir s3://test-bucket/test-prefix --acl public-read --no-progress`,
+      `aws s3 sync test-source-dir s3://test-bucket/test-prefix --no-progress --acl public-read --endpoint-url test-endpoint`,
       { stdio: "inherit" }
     );
   });
@@ -83,6 +86,8 @@ describe("S3 Deploy GitHub Action", () => {
           return "test-distribution-id";
         case "AWS_S3_PREFIX":
           return "";
+        case "AWS_S3_ENDPOINT":
+          return "test-endpoint";
         default:
           return "";
       }
@@ -91,7 +96,7 @@ describe("S3 Deploy GitHub Action", () => {
     await run();
 
     expect(execSync).toHaveBeenCalledWith(
-      `aws s3 sync test-source-dir s3://test-bucket --acl public-read --no-progress`,
+      `aws s3 sync test-source-dir s3://test-bucket --no-progress --acl public-read --endpoint-url test-endpoint`,
       { stdio: "inherit" }
     );
   });
@@ -120,6 +125,8 @@ describe("S3 Deploy GitHub Action", () => {
           return "us-east-1";
         case "CLOUDFRONT_DISTRIBUTION_ID":
           return "";
+        case "AWS_S3_ENDPOINT":
+          return "test-endpoint";
         default:
           return "";
       }
