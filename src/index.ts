@@ -5,10 +5,12 @@ function setAwsEnvVariables(
   accessKeyId: string,
   secretAccessKey: string,
   region: string,
+  endpoint?: string,
 ) {
   process.env.AWS_ACCESS_KEY_ID = accessKeyId;
   process.env.AWS_SECRET_ACCESS_KEY = secretAccessKey;
   process.env.AWS_DEFAULT_REGION = region;
+  process.env.AWS_S3_ENDPOINT = endpoint;
 }
 
 function syncFilesToS3(bucketName: string, sourceDir: string, prefix: string, endpoint?: string) {
@@ -55,9 +57,8 @@ async function run() {
     );
     const prefix = core.getInput("AWS_S3_PREFIX") || "";
     const endpoint = core.getInput("AWS_S3_ENDPOINT") || "";
-    console.log('endpoint', endpoint)
 
-    setAwsEnvVariables(accessKeyId, secretAccessKey, region);
+    setAwsEnvVariables(accessKeyId, secretAccessKey, region, endpoint);
 
     syncFilesToS3(bucketName, sourceDir, prefix, endpoint);
 

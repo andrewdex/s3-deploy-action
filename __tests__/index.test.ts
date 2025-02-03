@@ -64,7 +64,7 @@ describe("S3 Deploy GitHub Action", () => {
     await run();
 
     expect(execSync).toHaveBeenCalledWith(
-      `aws s3 sync test-source-dir s3://test-bucket/test-prefix --acl public-read --no-progress`,
+      `aws s3 sync test-source-dir s3://test-bucket/test-prefix --no-progress --acl public-read --endpoint-url test-endpoint`,
       { stdio: "inherit" }
     );
   });
@@ -96,7 +96,7 @@ describe("S3 Deploy GitHub Action", () => {
     await run();
 
     expect(execSync).toHaveBeenCalledWith(
-      `aws s3 sync test-source-dir s3://test-bucket --acl public-read --no-progress`,
+      `aws s3 sync test-source-dir s3://test-bucket --no-progress --acl public-read --endpoint-url test-endpoint`,
       { stdio: "inherit" }
     );
   });
