@@ -32,6 +32,8 @@ describe("S3 Deploy GitHub Action", () => {
           return "test-prefix";
         case "AWS_S3_ENDPOINT":
           return "test-endpoint";
+        case "AWS_S3_ACL":
+          return "public-read";
         default:
           return "";
       }
@@ -88,6 +90,8 @@ describe("S3 Deploy GitHub Action", () => {
           return "";
         case "AWS_S3_ENDPOINT":
           return "test-endpoint";
+        case "AWS_S3_ACL":
+          return "public-read";
         default:
           return "";
       }
@@ -97,6 +101,40 @@ describe("S3 Deploy GitHub Action", () => {
 
     expect(execSync).toHaveBeenCalledWith(
       `aws s3 sync test-source-dir s3://test-bucket --no-progress --acl public-read --endpoint-url test-endpoint`,
+      { stdio: "inherit" }
+    );
+  });
+
+  it("syncs files to S3 bucket without ACL when not provided", async () => {
+    getInputMock.mockImplementation((name: string) => {
+      switch (name) {
+        case "AWS_ACCESS_KEY_ID":
+          return "test-access-key";
+        case "AWS_SECRET_ACCESS_KEY":
+          return "test-secret-key";
+        case "AWS_S3_BUCKET":
+          return "test-bucket";
+        case "SOURCE_DIR":
+          return "test-source-dir";
+        case "AWS_REGION":
+          return "us-east-1";
+        case "CLOUDFRONT_DISTRIBUTION_ID":
+          return "test-distribution-id";
+        case "AWS_S3_PREFIX":
+          return "test-prefix";
+        case "AWS_S3_ENDPOINT":
+          return "test-endpoint";
+        case "AWS_S3_ACL":
+          return "";
+        default:
+          return "";
+      }
+    });
+
+    await run();
+
+    expect(execSync).toHaveBeenCalledWith(
+      `aws s3 sync test-source-dir s3://test-bucket/test-prefix --no-progress --endpoint-url test-endpoint`,
       { stdio: "inherit" }
     );
   });

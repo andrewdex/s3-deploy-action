@@ -5,7 +5,7 @@ function setAwsEnvVariables(
   accessKeyId: string,
   secretAccessKey: string,
   region: string,
-  endpoint?: string,
+  endpoint?: string
 ) {
   process.env.AWS_ACCESS_KEY_ID = accessKeyId;
   process.env.AWS_SECRET_ACCESS_KEY = secretAccessKey;
@@ -13,16 +13,34 @@ function setAwsEnvVariables(
   process.env.AWS_S3_ENDPOINT = endpoint;
 }
 
-function syncFilesToS3(bucketName: string, sourceDir: string, prefix: string, endpoint?: string) {
+function syncFilesToS3(
+  bucketName: string,
+  sourceDir: string,
+  prefix: string,
+  endpoint?: string,
+  acl?: string
+) {
   try {
-    const destination = prefix ? `s3://${bucketName}/${prefix}` : `s3://${bucketName}`;
+    const destination = prefix
+      ? `s3://${bucketName}/${prefix}`
+      : `s3://${bucketName}`;
     console.log(`Syncing files from ${sourceDir} to S3 bucket: ${destination}`);
     console.log(`Using endpoint: ${endpoint}`);
-    const endpointParam = endpoint ? `--endpoint-url ${endpoint}` : "";
-    execSync(
-      `aws s3 sync ${sourceDir} ${destination} --no-progress --acl public-read ${endpointParam}`,
-      { stdio: "inherit" }
-    );
+
+    const commandParts = [
+      `aws s3 sync ${sourceDir} ${destination} --no-progress`,
+    ];
+
+    if (acl) {
+      commandParts.push(`--acl ${acl}`);
+    }
+
+    if (endpoint) {
+      commandParts.push(`--endpoint-url ${endpoint}`);
+    }
+
+    const command = commandParts.join(" ");
+    execSync(command, { stdio: "inherit" });
   } catch (error) {
     core.error("Error syncing files to S3");
     throw error;
@@ -57,10 +75,11 @@ async function run() {
     );
     const prefix = core.getInput("AWS_S3_PREFIX") || "";
     const endpoint = core.getInput("AWS_S3_ENDPOINT") || "";
+    const acl = core.getInput("AWS_S3_ACL") || "";
 
     setAwsEnvVariables(accessKeyId, secretAccessKey, region, endpoint);
 
-    syncFilesToS3(bucketName, sourceDir, prefix, endpoint);
+    syncFilesToS3(bucketName, sourceDir, prefix, endpoint, acl);
 
     if (cloudfrontDistributionId) {
       invalidateCloudFrontCache(cloudfrontDistributionId);

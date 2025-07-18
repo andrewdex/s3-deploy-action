@@ -34,6 +34,10 @@ inputs:
     description: "Optional endpoint URL for the S3 bucket"
     required: false
 
+  AWS_S3_ACL:
+    description: "Optional ACL for uploaded files (e.g., public-read). Only use if ACLs are enabled on your bucket."
+    required: false
+
 runs:
   using: "node20"
   main: "dist/index.js"
