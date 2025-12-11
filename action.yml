@@ -38,6 +38,17 @@ inputs:
     description: "Optional ACL for uploaded files (e.g., public-read). Only use if ACLs are enabled on your bucket."
     required: false
 
+  DELETE_REMOVED:
+    description: "If true, delete files from S3 that don't exist in the source directory"
+    required: false
+    default: "false"
+
+outputs:
+  s3_url:
+    description: "The S3 URL where files were deployed"
+  cloudfront_invalidation_id:
+    description: "The CloudFront invalidation ID (only set if CLOUDFRONT_DISTRIBUTION_ID is provided)"
+
 runs:
   using: "node20"
   main: "dist/index.js"

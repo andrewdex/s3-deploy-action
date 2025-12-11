@@ -11535,6 +11535,14 @@ const { isUint8Array, isArrayBuffer } = __nccwpck_require__(8253)
 const { File: UndiciFile } = __nccwpck_require__(3041)
 const { parseMIMEType, serializeAMimeType } = __nccwpck_require__(4322)
 
+let random
+try {
+  const crypto = __nccwpck_require__(7598)
+  random = (max) => crypto.randomInt(0, max)
+} catch {
+  random = (max) => Math.floor(Math.random(max))
+}
+
 let ReadableStream = globalThis.ReadableStream
 
 /** @type {globalThis['File']} */
@@ -11620,7 +11628,7 @@ function extractBody (object, keepalive = false) {
     // Set source to a copy of the bytes held by object.
     source = new Uint8Array(object.buffer.slice(object.byteOffset, object.byteOffset + object.byteLength))
   } else if (util.isFormDataLike(object)) {
-    const boundary = `----formdata-undici-0${`${Math.floor(Math.random() * 1e11)}`.padStart(11, '0')}`
+    const boundary = `----formdata-undici-0${`${random(1e11)}`.padStart(11, '0')}`
     const prefix = `--${boundary}\r\nContent-Disposition: form-data`
 
     /*! formdata-polyfill. MIT License. Jimmy Wärting <https://jimmy.warting.se/opensource> */
@@ -25653,19 +25661,38 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = run;
 const core = __nccwpck_require__(7484);
 const child_process_1 = __nccwpck_require__(5317);
+const fs_1 = __nccwpck_require__(9896);
 function setAwsEnvVariables(accessKeyId, secretAccessKey, region, endpoint) {
     process.env.AWS_ACCESS_KEY_ID = accessKeyId;
     process.env.AWS_SECRET_ACCESS_KEY = secretAccessKey;
     process.env.AWS_DEFAULT_REGION = region;
-    process.env.AWS_S3_ENDPOINT = endpoint;
+    if (endpoint) {
+        process.env.AWS_S3_ENDPOINT = endpoint;
+    }
 }
-function syncFilesToS3(bucketName, sourceDir, prefix, endpoint) {
+function syncFilesToS3(bucketName, sourceDir, prefix, endpoint, acl, deleteRemoved) {
     try {
-        const destination = prefix ? `s3://${bucketName}/${prefix}` : `s3://${bucketName}`;
-        console.log(`Syncing files from ${sourceDir} to S3 bucket: ${destination}`);
-        console.log(`Using endpoint: ${endpoint}`);
-        const endpointParam = endpoint ? `--endpoint-url ${endpoint}` : "";
-        (0, child_process_1.execSync)(`aws s3 sync ${sourceDir} ${destination} --no-progress --acl public-read ${endpointParam}`, { stdio: "inherit" });
+        const destination = prefix
+            ? `s3://${bucketName}/${prefix}`
+            : `s3://${bucketName}`;
+        core.info(`Syncing files from ${sourceDir} to S3 bucket: ${destination}`);
+        if (endpoint) {
+            core.info(`Using endpoint: ${endpoint}`);
+        }
+        const commandParts = [
+            `aws s3 sync "${sourceDir}" "${destination}" --no-progress`,
+        ];
+        if (acl) {
+            commandParts.push(`--acl "${acl}"`);
+        }
+        if (endpoint) {
+            commandParts.push(`--endpoint-url "${endpoint}"`);
+        }
+        if (deleteRemoved) {
+            commandParts.push("--delete");
+        }
+        const command = commandParts.join(" ");
+        (0, child_process_1.execSync)(command, { stdio: "inherit" });
     }
     catch (error) {
         core.error("Error syncing files to S3");
@@ -25674,9 +25701,12 @@ function syncFilesToS3(bucketName, sourceDir, prefix, endpoint) {
 }
 function invalidateCloudFrontCache(distributionId) {
     try {
-        console.log(`Invalidating CloudFront distribution: ${distributionId}`);
-        (0, child_process_1.execSync)(`aws cloudfront create-invalidation --distribution-id ${distributionId} --paths "/*"`, { stdio: "inherit" });
-        console.log("CloudFront cache invalidation completed.");
+        core.info(`Invalidating CloudFront distribution: ${distributionId}`);
+        const output = (0, child_process_1.execSync)(`aws cloudfront create-invalidation --distribution-id "${distributionId}" --paths "/*"`, { stdio: "pipe", encoding: "utf-8" });
+        core.info("CloudFront cache invalidation completed.");
+        // Extract invalidation ID from output
+        const invalidationMatch = output.match(/"Id":\s*"([^"]+)"/);
+        return invalidationMatch ? invalidationMatch[1] : "";
     }
     catch (error) {
         core.error("Error invalidating CloudFront cache");
@@ -25696,10 +25726,25 @@ function run() {
             const cloudfrontDistributionId = core.getInput("CLOUDFRONT_DISTRIBUTION_ID");
             const prefix = core.getInput("AWS_S3_PREFIX") || "";
             const endpoint = core.getInput("AWS_S3_ENDPOINT") || "";
-            setAwsEnvVariables(accessKeyId, secretAccessKey, region, endpoint);
-            syncFilesToS3(bucketName, sourceDir, prefix, endpoint);
+            const acl = core.getInput("AWS_S3_ACL") || "";
+            const deleteRemoved = core.getBooleanInput("DELETE_REMOVED") || false;
+            // Validate source directory exists
+            if (!(0, fs_1.existsSync)(sourceDir)) {
+                throw new Error(`Source directory does not exist: ${sourceDir}`);
+            }
+            setAwsEnvVariables(accessKeyId, secretAccessKey, region, endpoint || undefined);
+            syncFilesToS3(bucketName, sourceDir, prefix, endpoint || undefined, acl || undefined, deleteRemoved);
+            // Set S3 URL output
+            const s3Url = prefix
+                ? `s3://${bucketName}/${prefix}`
+                : `s3://${bucketName}`;
+            core.setOutput("s3_url", s3Url);
+            let invalidationId = "";
             if (cloudfrontDistributionId) {
-                invalidateCloudFrontCache(cloudfrontDistributionId);
+                invalidationId = invalidateCloudFrontCache(cloudfrontDistributionId);
+                if (invalidationId) {
+                    core.setOutput("cloudfront_invalidation_id", invalidationId);
+                }
             }
         }
         catch (error) {
@@ -25813,6 +25858,14 @@ module.exports = require("https");
 
 "use strict";
 module.exports = require("net");
+
+/***/ }),
+
+/***/ 7598:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("node:crypto");
 
 /***/ }),
 

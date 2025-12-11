@@ -18,23 +18,22 @@ Optionally, you can also set the following environment variables:
 - `AWS_S3_ENDPOINT`: The endpoint URL for your S3 bucket. This is useful if you are using a custom S3-compatible storage service.
 - `AWS_S3_PREFIX`: An optional prefix for the S3 bucket. If set, files will be uploaded to the specified prefix within the bucket.
 - `AWS_S3_ACL`: An optional ACL for uploaded files (e.g., `public-read`). Only use if ACLs are enabled on your S3 bucket. If not specified, no ACL will be set.
+- `DELETE_REMOVED`: If set to `true`, files that exist in S3 but not in the source directory will be deleted. Defaults to `false`.
 
 ## Clearing CloudFront Cache
 
-If you are using Amazon CloudFront to distribute your content, you may want to invalidate the cache after deploying new files to ensure that the latest version is served. This action can be configured to clear the CloudFront cache if a distribution ID is provided.
+If you are using Amazon CloudFront to distribute your content, you may want to invalidate the cache after deploying new files to ensure that the latest version is served. This action automatically handles CloudFront cache invalidation when a distribution ID is provided.
 
-To clear the CloudFront cache, set the `CLOUDFRONT_DISTRIBUTION_ID` environment variable with your CloudFront distribution ID. The following script will invalidate the CloudFront cache:
+To enable CloudFront cache invalidation, set the `CLOUDFRONT_DISTRIBUTION_ID` input with your CloudFront distribution ID. The action will automatically invalidate all paths (`/*`) after a successful deployment.
 
-```sh
-if [ -n "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
-  echo "Invalidating CloudFront cache..."
-  aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths "/*" --profile s3-deploy-action
-fi
-```
+Make sure to provide the `CLOUDFRONT_DISTRIBUTION_ID` as a secret in your GitHub repository settings, and ensure that your AWS credentials have the necessary permissions to create invalidations for the CloudFront distribution.
 
-Make sure to provide the `CLOUDFRONT_DISTRIBUTION_ID` as a secret in your GitHub repository settings.
+## Outputs
 
-Make sure that your AWS credentials have the necessary permissions to create invalidations for the CloudFront distribution.
+The action provides the following outputs:
+
+- `s3_url`: The S3 URL where files were deployed (e.g., `s3://my-bucket/prefix`)
+- `cloudfront_invalidation_id`: The CloudFront invalidation ID (only set if `CLOUDFRONT_DISTRIBUTION_ID` is provided)
 
 ## Examples
 
@@ -171,6 +170,39 @@ jobs:
           AWS_S3_ENDPOINT: "https://nyc3.digitaloceanspaces.com"
           AWS_REGION: "us-east-1"
           SOURCE_DIR: "build"
+```
+
+### Deploy with Delete Removed Files
+
+Deploy files to S3 and remove files that no longer exist in the source directory:
+
+```yaml
+name: Deploy and Clean S3
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: npm run build
+      - name: Deploy to S3
+        id: deploy
+        uses: andrewdex/s3-deploy-action@v1
+        with:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          SOURCE_DIR: "dist"
+          DELETE_REMOVED: "true"
+      - name: Display S3 URL
+        run: echo "Deployed to ${{ steps.deploy.outputs.s3_url }}"
+      - name: Display CloudFront Invalidation ID
+        if: steps.deploy.outputs.cloudfront_invalidation_id != ''
+        run: echo "Invalidation ID: ${{ steps.deploy.outputs.cloudfront_invalidation_id }}"
 ```
 
 ### Multi-Environment Deployment
