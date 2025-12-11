@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "Running tests..."
+npm test
+
+echo "Building the dist bundle..."
+npm run build:gh
+
+echo "Staging the dist changes..."
+git add dist/
