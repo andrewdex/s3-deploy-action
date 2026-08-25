@@ -1,5 +1,5 @@
 import * as core from "@actions/core";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { existsSync } from "fs";
 
 function setAwsEnvVariables(
@@ -13,6 +13,8 @@ function setAwsEnvVariables(
   process.env.AWS_DEFAULT_REGION = region;
   if (endpoint) {
     process.env.AWS_S3_ENDPOINT = endpoint;
+  } else {
+    delete process.env.AWS_S3_ENDPOINT;
   }
 }
 
@@ -33,24 +35,21 @@ function syncFilesToS3(
       core.info(`Using endpoint: ${endpoint}`);
     }
 
-    const commandParts = [
-      `aws s3 sync "${sourceDir}" "${destination}" --no-progress`,
-    ];
+    const args = ["s3", "sync", sourceDir, destination, "--no-progress"];
 
     if (acl) {
-      commandParts.push(`--acl "${acl}"`);
+      args.push("--acl", acl);
     }
 
     if (endpoint) {
-      commandParts.push(`--endpoint-url "${endpoint}"`);
+      args.push("--endpoint-url", endpoint);
     }
 
     if (deleteRemoved) {
-      commandParts.push("--delete");
+      args.push("--delete");
     }
 
-    const command = commandParts.join(" ");
-    execSync(command, { stdio: "inherit" });
+    execFileSync("aws", args, { shell: false, stdio: "inherit" });
   } catch (error) {
     core.error("Error syncing files to S3");
     throw error;
@@ -60,12 +59,20 @@ function syncFilesToS3(
 function invalidateCloudFrontCache(distributionId: string): string {
   try {
     core.info(`Invalidating CloudFront distribution: ${distributionId}`);
-    const output = execSync(
-      `aws cloudfront create-invalidation --distribution-id "${distributionId}" --paths "/*"`,
-      { stdio: "pipe", encoding: "utf-8" }
+    const output = execFileSync(
+      "aws",
+      [
+        "cloudfront",
+        "create-invalidation",
+        "--distribution-id",
+        distributionId,
+        "--paths",
+        "/*",
+      ],
+      { encoding: "utf-8", shell: false, stdio: "pipe" }
     );
     core.info("CloudFront cache invalidation completed.");
-    
+
     // Extract invalidation ID from output
     const invalidationMatch = output.match(/"Id":\s*"([^"]+)"/);
     return invalidationMatch ? invalidationMatch[1] : "";
@@ -97,9 +104,21 @@ async function run() {
       throw new Error(`Source directory does not exist: ${sourceDir}`);
     }
 
-    setAwsEnvVariables(accessKeyId, secretAccessKey, region, endpoint || undefined);
+    setAwsEnvVariables(
+      accessKeyId,
+      secretAccessKey,
+      region,
+      endpoint || undefined
+    );
 
-    syncFilesToS3(bucketName, sourceDir, prefix, endpoint || undefined, acl || undefined, deleteRemoved);
+    syncFilesToS3(
+      bucketName,
+      sourceDir,
+      prefix,
+      endpoint || undefined,
+      acl || undefined,
+      deleteRemoved
+    );
 
     // Set S3 URL output
     const s3Url = prefix
@@ -119,6 +138,8 @@ async function run() {
   }
 }
 
-run();
+if (require.main === module) {
+  void run();
+}
 
 export { run };

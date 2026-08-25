@@ -50,7 +50,7 @@ outputs:
     description: "The CloudFront invalidation ID (only set if CLOUDFRONT_DISTRIBUTION_ID is provided)"
 
 runs:
-  using: "node20"
+  using: "node24"
   main: "dist/index.js"
 branding:
   icon: "upload-cloud"

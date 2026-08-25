@@ -4,8 +4,11 @@
 echo "Running tests..."
 npm test
 
+echo "Building TypeScript output..."
+npm run build
+
 echo "Building the dist bundle..."
 npm run build:gh
 
-echo "Staging the dist changes..."
-git add dist/
+echo "Staging generated changes..."
+git add lib/ dist/

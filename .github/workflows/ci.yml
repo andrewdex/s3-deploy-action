@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install project dependencies
@@ -25,3 +25,12 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Build TypeScript output
+        run: npm run build
+
+      - name: Build action bundle
+        run: npm run build:gh
+
+      - name: Verify committed build artifacts
+        run: git diff --exit-code -- lib/index.js dist/index.js
